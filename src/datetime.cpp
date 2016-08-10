@@ -642,53 +642,53 @@ std::string DateTime::toString(const char *format) const
   const char *hhmonths[]={"","January","February","March","April","May","June","July","August","September","October","November","December"};
 
   date_string=format;
-  date_string=std::regex_replace(date_string,std::regex("%ISO8601"),"%Y-%m-%dT%H:%MM:%SS%ZZ");
+  strutils::replace_all(date_string,"%ISO8601","%Y-%m-%dT%H:%MM:%SS%ZZ");
 // double-letter formats MUST come before single-letter formats or else the
 //  replacement will not work correctly (i.e. - %HH before %H)
   if (std::regex_search(date_string,std::regex("%dd"))) {
-    date_string=std::regex_replace(date_string,std::regex("%dd"),strutils::itos(dy));
+    strutils::replace_all(date_string,"%dd",strutils::itos(dy));
   }
   if (std::regex_search(date_string,std::regex("%d"))) {
-    date_string=std::regex_replace(date_string,std::regex("%d"),strutils::ftos(dy,2,0,'0'));
+    strutils::replace_all(date_string,"%d",strutils::ftos(dy,2,0,'0'));
   }
   if (std::regex_search(date_string,std::regex("%HH"))) {
-    date_string=std::regex_replace(date_string,std::regex("%HH"),strutils::itos(hr));
+    strutils::replace_all(date_string,"%HH",strutils::itos(hr));
   }
   if (std::regex_search(date_string,std::regex("%H"))) {
-    date_string=std::regex_replace(date_string,std::regex("%H"),strutils::ftos(hr,2,0,'0'));
+    strutils::replace_all(date_string,"%H",strutils::ftos(hr,2,0,'0'));
   }
   if (std::regex_search(date_string,std::regex("%hh"))) {
-    date_string=std::regex_replace(date_string,std::regex("%hh"),hhmonths[mo]);
+    strutils::replace_all(date_string,"%hh",hhmonths[mo]);
   }
   if (std::regex_search(date_string,std::regex("%h"))) {
-    date_string=std::regex_replace(date_string,std::regex("%h"),hmonths[mo]);
+    strutils::replace_all(date_string,"%h",hmonths[mo]);
   }
   if (std::regex_search(date_string,std::regex("%MM"))) {
-    date_string=std::regex_replace(date_string,std::regex("%MM"),strutils::ftos(min,2,0,'0'));
+    strutils::replace_all(date_string,"%MM",strutils::ftos(min,2,0,'0'));
   }
   if (std::regex_search(date_string,std::regex("%M"))) {
-    date_string=std::regex_replace(date_string,std::regex("%M"),strutils::itos(min));
+    strutils::replace_all(date_string,"%M",strutils::itos(min));
   }
   if (std::regex_search(date_string,std::regex("%mm"))) {
-    date_string=std::regex_replace(date_string,std::regex("%mm"),strutils::itos(mo));
+    strutils::replace_all(date_string,"%mm",strutils::itos(mo));
   }
   if (std::regex_search(date_string,std::regex("%m"))) {
-    date_string=std::regex_replace(date_string,std::regex("%m"),strutils::ftos(mo,2,0,'0'));
+    strutils::replace_all(date_string,"%m",strutils::ftos(mo,2,0,'0'));
   }
   if (std::regex_search(date_string,std::regex("%R"))) {
-    date_string=std::regex_replace(date_string,std::regex("%R"),strutils::ftos(hr,2,0,'0')+":"+strutils::ftos(min,2,0,'0'));
+    strutils::replace_all(date_string,"%R",strutils::ftos(hr,2,0,'0')+":"+strutils::ftos(min,2,0,'0'));
   }
   if (std::regex_search(date_string,std::regex("%SS"))) {
-    date_string=std::regex_replace(date_string,std::regex("%SS"),strutils::ftos(sec,2,0,'0'));
+    strutils::replace_all(date_string,"%SS",strutils::ftos(sec,2,0,'0'));
   }
   if (std::regex_search(date_string,std::regex("%S"))) {
-    date_string=std::regex_replace(date_string,std::regex("%S"),strutils::itos(sec));
+    strutils::replace_all(date_string,"%S",strutils::itos(sec));
   }
   if (std::regex_search(date_string,std::regex("%T"))) {
-    date_string=std::regex_replace(date_string,std::regex("%T"),strutils::ftos(hr,2,0,'0')+":"+strutils::ftos(min,2,0,'0')+":"+strutils::ftos(sec,2,0,'0'));
+    strutils::replace_all(date_string,"%T",strutils::ftos(hr,2,0,'0')+":"+strutils::ftos(min,2,0,'0')+":"+strutils::ftos(sec,2,0,'0'));
   }
   if (std::regex_search(date_string,std::regex("%Y"))) {
-    date_string=std::regex_replace(date_string,std::regex("%Y"),strutils::ftos(yr,4,0,'0'));
+    strutils::replace_all(date_string,"%Y",strutils::ftos(yr,4,0,'0'));
   }
   if (std::regex_search(date_string,std::regex("%ZZ"))) {
     if (utc_off > -2400 && utc_off < 2400) {
@@ -700,10 +700,10 @@ std::string DateTime::toString(const char *format) const
 	else {
 	  tz.insert(0,"+");
 	}
-	date_string=std::regex_replace(date_string,std::regex("%ZZ"),tz);
+	strutils::replace_all(date_string,"%ZZ",tz);
     }
     else {
-	date_string=std::regex_replace(date_string,std::regex("%ZZ"),"%Z");
+	strutils::replace_all(date_string,"%ZZ","%Z");
     }
   }
   if (std::regex_search(date_string,std::regex("%Z"))) {
@@ -715,17 +715,17 @@ std::string DateTime::toString(const char *format) const
 	else {
 	  tz.insert(0,"+");
 	}
-	date_string=std::regex_replace(date_string,std::regex("%Z"),tz);
+	strutils::replace_all(date_string,"%Z",tz);
     }
     else if (utc_off == -2400) {
-	date_string=std::regex_replace(date_string,std::regex("%Z"),"LST");
+	strutils::replace_all(date_string,"%Z","LST");
     }
     else if (utc_off == 2400) {
-	date_string=std::regex_replace(date_string,std::regex("%Z"),"LT");
+	strutils::replace_all(date_string,"%Z","LT");
     }
   }
   if (std::regex_search(date_string,std::regex("%a")) && wkdy >= 0) {
-    date_string=std::regex_replace(date_string,std::regex("%a"),wkdys[wkdy]);
+    strutils::replace_all(date_string,"%a",wkdys[wkdy]);
   }
   return date_string;
 }
