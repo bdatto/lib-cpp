@@ -1,8 +1,5 @@
 #include <iostream>
 #include <iomanip>
-#include <stdio.h>
-#include <sys/types.h>
-#include <time.h>
 #include <sstream>
 #include <regex>
 #include <datetime.hpp>
@@ -372,38 +369,15 @@ DateTime DateTime::secondsAdded(size_t secondsToAdd,std::string calendar) const
 DateTime DateTime::secondsSubtracted(size_t secondsToSubtract) const
 {
   DateTime new_dt=*this;
-
   new_dt.subtractSeconds(secondsToSubtract);
   return new_dt;
 }
 
 void DateTime::set(long long YYYYMMDDHHMMSS)
 {
-  long long year,month,day,time;
-
-/*
-  if (YYYYMMDDHHMMSS > 99999999) {
-    time=YYYYMMDDHHMMSS % 1000000;
-    YYYYMMDDHHMMSS/=1000000;
-  }
-  else
-    time=0;
-  if (YYYYMMDDHHMMSS > 999999) {
-    day=YYYYMMDDHHMMSS % 100;
-    YYYYMMDDHHMMSS/=100;
-  }
-  else
-    day=0;
-  if (YYYYMMDDHHMMSS > 9999) {
-    month=YYYYMMDDHHMMSS % 100;
-    YYYYMMDDHHMMSS/=100;
-  }
-  else
-    month=0;
-  year=YYYYMMDDHHMMSS;
-*/
-  time=YYYYMMDDHHMMSS % 1000000;
+  size_t time=YYYYMMDDHHMMSS % 1000000;
   YYYYMMDDHHMMSS/=1000000;
+  short day;
   if (YYYYMMDDHHMMSS > 0) {
     day=YYYYMMDDHHMMSS % 100;
     YYYYMMDDHHMMSS/=100;
@@ -411,6 +385,7 @@ void DateTime::set(long long YYYYMMDDHHMMSS)
   else {
     day=0;
   }
+  short month;
   if (YYYYMMDDHHMMSS > 0) {
     month=YYYYMMDDHHMMSS % 100;
     YYYYMMDDHHMMSS/=100;
@@ -418,6 +393,7 @@ void DateTime::set(long long YYYYMMDDHHMMSS)
   else {
     month=0;
   }
+  short year;
   if (YYYYMMDDHHMMSS > 0) {
     year=YYYYMMDDHHMMSS;
   }
@@ -427,7 +403,7 @@ void DateTime::set(long long YYYYMMDDHHMMSS)
   set(year,month,day,time);
 }
 
-void DateTime::set(short year,short month,short day,size_t hhmmss)
+void DateTime::set(short year,short month,short day,size_t hhmmss,short utcOffset_as_hhmm)
 {
   DateTime base;
   base.yr=1970;
@@ -437,6 +413,7 @@ void DateTime::set(short year,short month,short day,size_t hhmmss)
   mo=month;
   dy=day;
   setTime(hhmmss);
+  setUTCOffset(utcOffset_as_hhmm);
   if (*this == base) {
     wkdy=4;
   }

@@ -9,11 +9,10 @@ public:
   static const short local_utcOffset_from_standard_time_as_hhmm;
   static const size_t days_in_month[13];
   DateTime() : yr(0),mo(0),dy(0),hr(0),min(0),sec(0),utc_off(0),wkdy(-1) {}
-  DateTime(short year,short month,short day,size_t hhmmss,short utcOffset_as_hhmm) : DateTime() {
-    set(yr,mo,dy,hhmmss);
-    setUTCOffset(utcOffset_as_hhmm);
+  DateTime(short year,short month,short day,size_t hhmmss,short utcOffset_as_hhmm) {
+    set(year,month,day,hhmmss,utcOffset_as_hhmm);
   }
-  DateTime(long long YYYYMMDDHHMMSS) : DateTime() {
+  DateTime(long long YYYYMMDDHHMMSS) : utc_off(0),wkdy(-1) {
     set(YYYYMMDDHHMMSS);
   }
   void add(std::string units,size_t numToAdd,std::string calendar = "");
@@ -49,7 +48,7 @@ public:
   DateTime secondsAdded(size_t secondsToAdd,std::string calendar = "") const;
   DateTime secondsSubtracted(size_t secondsToSubtract) const;
   void set(long long YYYYMMDDHHMMSS);
-  void set(short year,short month=0,short day=0,size_t hhmmss = 0);
+  void set(short year,short month = 0,short day = 0,size_t hhmmss = 0,short utcOffset_as_hhmm = 0);
   void set(size_t hoursToAdd,const DateTime& reference,std::string calendar = "");
   void setDay(short day) { dy=day; }
   void setMonth(short month) { mo=month; }
