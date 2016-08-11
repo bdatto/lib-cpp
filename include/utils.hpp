@@ -14,36 +14,6 @@ extern std::string convertHTMLSummaryToASCII(std::string summary,size_t wrapLeng
 
 } // end namespace summary
 
-namespace hereDoc {
-
-struct IfEntry {
-  IfEntry() : key() {}
-
-  std::string key;
-};
-struct RepeatEntry {
-  RepeatEntry() : key(),list(nullptr) {}
-
-  std::string key;
-  std::shared_ptr<std::deque<std::string>> list;
-};
-struct Tokens {
-  Tokens() : replaces(),ifs(),repeats() {}
-  void clear() {
-    replaces.clear();
-    ifs.clear();
-    repeats.clear();
-  }
-
-  std::list<std::string> replaces;
-  my::map<IfEntry> ifs;
-  my::map<RepeatEntry> repeats;
-};
-extern void print(std::string filename,Tokens* tokens = NULL);
-extern void print(std::string filename,Tokens* tokens,std::ostream& ofs,size_t indent_length = 0);
-
-} // end namespace hereDoc
-
 namespace strutils {
 
 extern void chop(std::string& s,size_t num_chars = 1);
