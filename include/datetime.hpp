@@ -9,7 +9,7 @@ public:
   static const short local_utcOffset_from_standard_time_as_hhmm;
   static const size_t days_in_month[13];
   DateTime() : yr(0),mo(0),dy(0),hr(0),min(0),sec(0),utc_off(0),wkdy(-1) {}
-  DateTime(short year,short month,short day,size_t hhmmss,short utcOffset_as_hhmm) : yr(year),mo(month),dy(day),hr(0),min(0),sec(0),utc_off(0),wkdy(-1) {
+  DateTime(short year,short month,short day,size_t hhmmss,short utcOffset_as_hhmm) : DateTime() {
     set(yr,mo,dy,hhmmss);
     setUTCOffset(utcOffset_as_hhmm);
   }
