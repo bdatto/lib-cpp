@@ -1,5 +1,7 @@
 #include <iostream>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <string>
 #include <sstream>
 #include <deque>
@@ -131,6 +133,57 @@ void replace_all(std::string& s,const std::string& old_s,const std::string& new_
   }
 }
 
+void strput(char *string,int numeric,int num_chars,char fill,bool is_signed)
+{
+  int off=0;
+  auto sign=' ';
+  if (numeric < 0) {
+    is_signed=true;
+    sign='-';
+    numeric=-numeric;
+  }
+  else if (is_signed) {
+    sign='+';
+  }
+  if (is_signed) {
+    --num_chars;
+    if (fill != ' ') {
+	string[off++]=sign;
+    }
+    else {
+	string[off++]=' ';
+    }
+  }
+  if (numeric >= pow(10.,num_chars)) {
+    std::cerr << "Error in strput: integer " << numeric << " is larger than " << "character length " << num_chars << std::endl;
+    exit(1);
+  }
+  auto lead=true;
+  for (int n=0; n < num_chars; ++n) {
+    auto div=pow(10.,num_chars-1-n);
+    auto chr=numeric/div;
+    if (chr != 0 || (n+1) == num_chars) {
+	if (is_signed && fill == ' ') {
+	  string[n+off-1]=sign;
+	  is_signed=false;
+	}
+	string[n+off]=chr+48;
+	lead=false;
+    }
+    else {
+	if (lead) {
+	  string[n+off]=fill;
+	}
+	else {
+	  string[n+off]='0';
+	}
+    }
+    if (numeric >= div) {
+	numeric-=chr*div;
+    }
+  }
+}
+
 void trim_back(std::string& s)
 {
   int beg,end;
@@ -169,14 +222,95 @@ void trim(std::string& s)
   trim_back(s);
 }
 
+std::deque<std::string> split(const std::string& s,const std::string& separator)
+{
+  std::deque<std::string> parts;
+  if (s.length() == 0) {
+    return parts;
+  }
+  int check_len=s.length()-separator.length()+1;
+  if (check_len < 1) {
+    parts.emplace_back(s);
+    return parts;
+  }
+  size_t start=0,end=0;
+  auto in_white_space=false;
+  while (end < static_cast<size_t>(check_len)) {
+    if (separator.length() == 0) {
+	if (s[end] == ' ') {
+	  if (!in_white_space) {
+	    parts.emplace_back(s.substr(start,end-start));
+	    in_white_space=true;
+	  }
+	}
+	else if (in_white_space) {
+	  start=end;
+	  in_white_space=false;
+	}
+	++end;
+    }
+    else {
+	if (strncmp(&s[end],separator.c_str(),separator.length()) == 0) {
+	  parts.emplace_back(s.substr(start,end-start));
+	  end+=separator.length();
+	  start=end;
+	}
+	else {
+	  ++end;
+	}
+    }
+  }
+  if (start < s.length()) {
+    parts.emplace_back(s.substr(start));
+  }
+  else {
+    parts.emplace_back("");
+  }
+  return parts;
+}
+
+std::string wrap(const std::string& s,size_t wrap_width,size_t indent_width)
+{
+  std::string s_indent(indent_width,' ');
+  std::string s_wrap;
+  auto lines=split(s,"\n");
+  for (auto& line : lines) {
+    if (!s_wrap.empty() || line.empty()) {
+	s_wrap+="\n";
+    }
+    size_t pos=0;
+    while (pos < line.length()) {
+	auto end_pos=pos+wrap_width-indent_width;
+	s_wrap+=s_indent;
+	if (end_pos < line.length()) {
+	  auto index=line.rfind(' ',end_pos);
+	  if (index < pos) {
+// the next contiguous block of text overflows the wrap_width
+	    index=line.find(' ',end_pos);
+	  }
+	  s_wrap+=line.substr(pos,index-pos)+"\n";
+	  pos=index+1;
+	}
+	else {
+	  s_wrap+=line.substr(pos);
+	  pos=line.length();
+	}
+    }
+  }
+  return s_wrap;
+}
+
 bool contains(const std::string& s,const std::string& sub_s)
 {
-  if (sub_s.length() == 0)
+  if (sub_s.length() == 0) {
     return false;
-  if (s.find(sub_s,0) != std::string::npos)
+  }
+  if (s.find(sub_s,0) != std::string::npos) {
     return true;
-  else
+  }
+  else {
     return false;
+  }
 }
 
 bool has_beginning(const std::string& s,const std::string& beginning)
@@ -260,6 +394,16 @@ size_t occurs(const std::string& s,const std::string& find_s)
     pos=index+find_s.length();
   }
   return num_occurs;
+}
+
+std::string btos(bool b)
+{
+  if (b) {
+    return "true";
+  }
+  else {
+    return "false";
+  }
 }
 
 std::string capitalize(const std::string& s)
@@ -415,49 +559,6 @@ std::string to_upper(const std::string& s)
   return to_upper(s,0,s.length());
 }
 
-std::deque<std::string> split(const std::string& s,const std::string& separator)
-{
-  std::deque<std::string> parts;
-  if (s.length() == 0) {
-    return parts;
-  }
-  auto check_len=s.length()-separator.length()+1;
-  auto start=0,end=0;
-  auto in_white_space=false;
-  while (end < check_len) {
-    if (separator.length() == 0) {
-	if (s[end] == ' ') {
-	  if (!in_white_space) {
-	    parts.emplace_back(s.substr(start,end-start));
-	    in_white_space=true;
-	  }
-	}
-	else if (in_white_space) {
-	  start=end;
-	  in_white_space=false;
-	}
-	++end;
-    }
-    else {
-	if (strncmp(&s[end],separator.c_str(),separator.length()) == 0) {
-	  parts.emplace_back(s.substr(start,end-start));
-	  end+=separator.length();
-	  start=end;
-	}
-	else {
-	  ++end;
-	}
-    }
-  }
-  if (start < s.length()) {
-    parts.emplace_back(s.substr(start));
-  }
-  else {
-    parts.emplace_back("");
-  }
-  return parts;
-}
-
 std::string token(const std::string& s,const std::string& separator,size_t token_number)
 {
   auto parts=split(s,separator);
@@ -467,30 +568,6 @@ std::string token(const std::string& s,const std::string& separator,size_t token
   else {
     return "";
   }
-}
-
-std::deque<std::string> xml_split(const std::string& s)
-{
-  std::deque<std::string> parts;
-  size_t pos=0,bindex,eindex;
-
-  if ( (bindex=s.find("<",pos)) != 0)
-    return parts;
-  while (pos < s.length() && bindex != std::string::npos) {
-    if ( (bindex-pos) == 0) {
-	if ( (eindex=s.find(">",pos)) == std::string::npos)
-	  pos=s.length();
-	else
-	  pos=eindex+1;
-	parts.push_back(s.substr(bindex,(pos-bindex)));
-	bindex=s.find("<",pos);
-    }
-    else {
-	parts.push_back(s.substr(pos,(bindex-pos)));
-	pos=bindex;
-    }
-  }
-  return parts;
 }
 
 std::string soundex(const std::string& s)
@@ -538,6 +615,32 @@ std::string soundex(const std::string& s)
   while (tail.length() < 3)
     tail+="0";
   return head+tail;
+}
+
+std::string strand(size_t length)
+{
+  time_t tm=time(NULL);
+  static size_t cnt=1;
+  std::string s;
+  s.reserve(length);
+  auto a=reinterpret_cast<long long>(&s[0]);
+  auto ia=(a % 0x7fffffff);
+  srand(tm*getpid()*ia*cnt);
+  for (size_t n=0; n < length; ++n) {
+    auto mnum=(rand() % 100);
+    while (1) {
+        while (mnum > 0 && (mnum < 13 || (mnum > 22 && mnum < 30) || (mnum > 55 && mnum < 62) || mnum > 87)) {
+          mnum/=10;
+        }
+        if (mnum != 0)
+          break;
+        else
+          mnum=(rand() % 100);
+    }
+    s.push_back(mnum+35);
+  }
+  ++cnt;
+  return s;
 }
 
 std::string number_with_commas(std::string s)
