@@ -3,10 +3,12 @@
 #include <sstream>
 #include <regex>
 #include <datetime.hpp>
-#include <utils.hpp>
+#include <strutils.hpp>
 
 const short DateTime::local_utcOffset_from_standard_time_as_hhmm=-700;
-const size_t DateTime::days_in_month[13]={0,31,28,31,30,31,30,31,31,30,31,30,31};
+const size_t DateTime::days_in_month_noleap[13]={0,31,28,31,30,31,30,31,31,30,31,30,31};
+const size_t DateTime::days_in_month_leap[13]={0,31,29,31,30,31,30,31,31,30,31,30,31};
+const size_t DateTime::days_in_month_360_day[13]={0,30,30,30,30,30,30,30,30,30,30,30,30};
 
 void DateTime::add(std::string units,size_t numToAdd,std::string calendar)
 {
@@ -37,21 +39,22 @@ void DateTime::add(std::string units,size_t numToAdd,std::string calendar)
 
 void DateTime::addDays(size_t daysToAdd,std::string calendar)
 {
-  size_t days[]={0,31,28,31,30,31,30,31,31,30,31,30,31};
-  size_t newdy;
-
-  if (calendar.length() == 0 || calendar != "noleap") {
-    if (isLeapYear(yr))
-	days[2]=29;
+  size_t *days;
+  if (calendar == "360_day") {
+    days=const_cast<size_t *>(days_in_month_360_day);
   }
-  newdy=dy+daysToAdd;
+  else if (isLeapYear(yr,calendar)) {
+    days=const_cast<size_t *>(days_in_month_leap);
+  }
+  else {
+    days=const_cast<size_t *>(days_in_month_noleap);
+  }
+  auto newdy=dy+daysToAdd;
   while (newdy > days[mo]) {
     newdy-=days[mo];
-    mo++;
+    ++mo;
     if (mo > 12) {
-	yr++;
-	if (calendar.length() == 0 || calendar != "noleap")
-	  days[2]= (isLeapYear(yr)) ? 29 : 28;
+	++yr;
 	mo=1;
     }
   }
@@ -91,11 +94,17 @@ void DateTime::addMinutes(size_t minutesToAdd,std::string calendar)
 
 void DateTime::addMonths(size_t monthsToAdd,std::string calendar)
 {
-  size_t days[]={0,31,28,31,30,31,30,31,31,30,31,30,31};
-  size_t n;
-
-  for (n=0; n < monthsToAdd; n++) {
-    days[2]= (isLeapYear(yr)) ? 29 : 28;
+  size_t *days;
+  if (calendar == "360_day") {
+    days=const_cast<size_t *>(days_in_month_360_day);
+  }
+  else if (isLeapYear(yr,calendar)) {
+    days=const_cast<size_t *>(days_in_month_leap);
+  }
+  else {
+    days=const_cast<size_t *>(days_in_month_noleap);
+  }
+  for (size_t n=0; n < monthsToAdd; ++n) {
     addDays(days[mo],calendar);
   }
 }
@@ -152,41 +161,44 @@ DateTime DateTime::added(std::string units,size_t numToAdd,std::string calendar)
 DateTime DateTime::daysAdded(size_t daysToAdd,std::string calendar) const
 {
   DateTime new_dt=*this;
-
   new_dt.addDays(daysToAdd,calendar);
   return new_dt;
 }
 
-DateTime DateTime::daysSubtracted(size_t daysToSubtract) const
+DateTime DateTime::daysSubtracted(size_t daysToSubtract,std::string calendar) const
 {
   DateTime new_dt=*this;
-
-  new_dt.subtractDays(daysToSubtract);
+  new_dt.subtractDays(daysToSubtract,calendar);
   return new_dt;
 }
 
 int DateTime::getDaysSince(const DateTime& reference,std::string calendar) const
 {
-  size_t num_days[]={0,31,28,31,30,31,30,31,31,30,31,30,31};
   if (*this < reference) {
     return -1;
   }
   if (*this == reference) {
     return 0;
   }
-  auto days=365*this->getYearsSince(reference);
-  if (calendar.length() == 0 || calendar != "noleap") {
-    if (days > 0 && isLeapYear(reference.yr) && reference.mo <= 2) {
+  size_t days,*num_days;
+  if (calendar == "360_day") {
+    days=360*this->getYearsSince(reference);
+    num_days=const_cast<size_t *>(days_in_month_360_day);
+  }
+  else {
+    days=365*this->getYearsSince(reference);
+    num_days=const_cast<size_t *>(days_in_month_noleap);
+  }
+  if (days > 0 && isLeapYear(reference.yr,calendar) && reference.mo <= 2) {
+    ++days;
+  }
+  for (short n=reference.yr+1; n < this->yr; ++n) {
+    if (isLeapYear(n,calendar)) {
 	++days;
     }
-    for (short n=reference.yr+1; n < this->yr; ++n) {
-	if (isLeapYear(n)) {
-	  ++days;
-	}
-    }
-    if (isLeapYear(this->yr) && this->mo > 2) {
-	++days;
-    }
+  }
+  if (isLeapYear(this->yr,calendar) && this->mo > 2 && (reference.yr < this->yr || reference.mo <= 2)) {
+    ++days;
   }
   days+=(this->dy-reference.dy);
   if (this->getMonthsSince(reference) > 0) {
@@ -318,11 +330,11 @@ DateTime DateTime::hoursAdded(size_t hoursToAdd,std::string calendar) const
   return new_dt;
 }
 
-DateTime DateTime::hoursSubtracted(size_t hoursToSubtract) const
+DateTime DateTime::hoursSubtracted(size_t hoursToSubtract,std::string calendar) const
 {
   DateTime new_dt=*this;
 
-  new_dt.subtractHours(hoursToSubtract);
+  new_dt.subtractHours(hoursToSubtract,calendar);
   return new_dt;
 }
 
@@ -334,11 +346,11 @@ DateTime DateTime::minutesAdded(size_t minutesToAdd,std::string calendar) const
   return new_dt;
 }
 
-DateTime DateTime::minutesSubtracted(size_t minutesToSubtract) const
+DateTime DateTime::minutesSubtracted(size_t minutesToSubtract,std::string calendar) const
 {
   DateTime new_dt=*this;
 
-  new_dt.subtractMinutes(minutesToSubtract);
+  new_dt.subtractMinutes(minutesToSubtract,calendar);
   return new_dt;
 }
 
@@ -350,11 +362,11 @@ DateTime DateTime::monthsAdded(size_t monthsToAdd,std::string calendar) const
   return new_dt;
 }
 
-DateTime DateTime::monthsSubtracted(size_t monthsToSubtract) const
+DateTime DateTime::monthsSubtracted(size_t monthsToSubtract,std::string calendar) const
 {
   DateTime new_dt=*this;
 
-  new_dt.subtractMonths(monthsToSubtract);
+  new_dt.subtractMonths(monthsToSubtract,calendar);
   return new_dt;
 }
 
@@ -366,10 +378,10 @@ DateTime DateTime::secondsAdded(size_t secondsToAdd,std::string calendar) const
   return new_dt;
 }
 
-DateTime DateTime::secondsSubtracted(size_t secondsToSubtract) const
+DateTime DateTime::secondsSubtracted(size_t secondsToSubtract,std::string calendar) const
 {
   DateTime new_dt=*this;
-  new_dt.subtractSeconds(secondsToSubtract);
+  new_dt.subtractSeconds(secondsToSubtract,calendar);
   return new_dt;
 }
 
@@ -408,21 +420,21 @@ void DateTime::set(short year,short month,short day,size_t hhmmss,short utcOffse
   DateTime base;
   base.yr=1970;
   base.mo=1;
-  base.dy=1;
+  base.dy=4;
   yr=year;
   mo=month;
   dy=day;
-  setTime(hhmmss);
-  setUTCOffset(utcOffset_as_hhmm);
   if (*this == base) {
-    wkdy=4;
+    wkdy=0;
   }
   else if (*this > base) {
-    wkdy=((4+(getDaysSince(base) % 7)) % 7);
+    wkdy=(getDaysSince(base) % 7);
   }
   else {
-    wkdy=((4-(base.getDaysSince(*this) % 7)) % 7);
+    wkdy=((7-(base.getDaysSince(*this) % 7)) % 7);
   }
+  setTime(hhmmss);
+  setUTCOffset(utcOffset_as_hhmm);
 }
 
 void DateTime::set(size_t hoursToAdd,const DateTime& reference,std::string calendar)
@@ -464,26 +476,26 @@ void DateTime::setTime(size_t hhmmss)
   hr=hhmmss;
 }
 
-void DateTime::subtract(std::string units,size_t numToSubtract)
+void DateTime::subtract(std::string units,size_t numToSubtract,std::string calendar)
 {
   units=strutils::to_lower(units);
   if (units == "hours") {
-    subtractHours(numToSubtract);
+    subtractHours(numToSubtract,calendar);
   }
   else if (units == "days") {
-    subtractDays(numToSubtract);
+    subtractDays(numToSubtract,calendar);
   }
   else if (units == "months") {
-    subtractMonths(numToSubtract);
+    subtractMonths(numToSubtract,calendar);
   }
   else if (units == "years") {
     subtractYears(numToSubtract);
   }
   else if (units == "minutes") {
-    subtractMinutes(numToSubtract);
+    subtractMinutes(numToSubtract,calendar);
   }
   else if (units == "seconds") {
-    subtractSeconds(numToSubtract);
+    subtractSeconds(numToSubtract,calendar);
   }
   else {
     std::cerr << "Error: units " << units << " not recognized" << std::endl;
@@ -491,18 +503,20 @@ void DateTime::subtract(std::string units,size_t numToSubtract)
   }
 }
 
-void DateTime::subtractDays(size_t daysToSubtract)
+void DateTime::subtractDays(size_t daysToSubtract,std::string calendar)
 {
   size_t days[]={0,31,28,31,30,31,30,31,31,30,31,30,31};
   short newdy;
 
-  if (isLeapYear(yr)) days[2]=29;
+  if (isLeapYear(yr,calendar)) {
+    days[2]=29;
+  }
   newdy=dy-daysToSubtract;
   while (newdy <= 0) {
-    mo--;
+    --mo;
     if (mo < 1) {
-	yr--;
-	days[2]= (isLeapYear(yr)) ? 29 : 28;
+	--yr;
+	days[2]= (isLeapYear(yr,calendar)) ? 29 : 28;
 	mo=12;
     }
     newdy+=days[mo];
@@ -510,60 +524,53 @@ void DateTime::subtractDays(size_t daysToSubtract)
   dy=newdy;
 }
 
-void DateTime::subtractHours(size_t hoursToSubtract)
+void DateTime::subtractHours(size_t hoursToSubtract,std::string calendar)
 {
-  size_t hh,dd;
-
-  dd=hoursToSubtract/24;
-  hh=hoursToSubtract % 24;
+  auto dd=hoursToSubtract/24;
+  auto hh=hoursToSubtract % 24;
   hr-=hh;
   if (hr < 0) {
     hr+=24;
-    dd++;
+    ++dd;
   }
-  subtractDays(dd);
+  subtractDays(dd,calendar);
 }
 
-void DateTime::subtractMinutes(size_t minutesToSubtract)
+void DateTime::subtractMinutes(size_t minutesToSubtract,std::string calendar)
 {
-  size_t hh,mm;
-
-  hh=minutesToSubtract/60;
-  mm=minutesToSubtract % 60;
+  auto hh=minutesToSubtract/60;
+  auto mm=minutesToSubtract % 60;
   min-=mm;
   if (min < 0) {
     min+=60;
-    hh++;
+    ++hh;
   }
-  subtractHours(hh);
+  subtractHours(hh,calendar);
 }
 
-void DateTime::subtractMonths(size_t monthsToSubtract)
+void DateTime::subtractMonths(size_t monthsToSubtract,std::string calendar)
 {
   size_t days[]={0,31,28,31,30,31,30,31,31,30,31,30,31};
-  size_t n,mm;
-
-  for (n=0; n < monthsToSubtract; n++) {
-    days[2]= (isLeapYear(yr)) ? 29 : 28;
-    mm=mo-1;
-    if (mm == 0)
+  for (size_t n=0; n < monthsToSubtract; ++n) {
+    days[2]= (isLeapYear(yr,calendar)) ? 29 : 28;
+    auto mm=mo-1;
+    if (mm == 0) {
 	mm=12;
-    subtractDays(days[mm]);
+    }
+    subtractDays(days[mm],calendar);
   }
 }
 
-void DateTime::subtractSeconds(size_t secondsToSubtract)
+void DateTime::subtractSeconds(size_t secondsToSubtract,std::string calendar)
 {
-  size_t mm,ss;
-
-  mm=secondsToSubtract/60;
-  ss=secondsToSubtract % 60;
+  auto mm=secondsToSubtract/60;
+  auto ss=secondsToSubtract % 60;
   sec-=ss;
   if (sec < 0) {
     sec+=60;
-    mm++;
+    ++mm;
   }
-  subtractMinutes(mm);
+  subtractMinutes(mm,calendar);
 }
 
 void DateTime::subtractYears(size_t yearsToSubtract)
@@ -572,11 +579,10 @@ void DateTime::subtractYears(size_t yearsToSubtract)
   yr-=yearsToSubtract;
 }
 
-DateTime DateTime::subtracted(std::string units,size_t numToSubtract) const
+DateTime DateTime::subtracted(std::string units,size_t numToSubtract,std::string calendar) const
 {
   DateTime new_dt=*this;
-
-  new_dt.subtract(units,numToSubtract);
+  new_dt.subtract(units,numToSubtract,calendar);
   return new_dt;
 }
 
@@ -622,51 +628,21 @@ std::string DateTime::toString(const char *format) const
   strutils::replace_all(date_string,"%ISO8601","%Y-%m-%dT%H:%MM:%SS%ZZ");
 // double-letter formats MUST come before single-letter formats or else the
 //  replacement will not work correctly (i.e. - %HH before %H)
-  if (std::regex_search(date_string,std::regex("%dd"))) {
-    strutils::replace_all(date_string,"%dd",strutils::itos(dy));
-  }
-  if (std::regex_search(date_string,std::regex("%d"))) {
-    strutils::replace_all(date_string,"%d",strutils::ftos(dy,2,0,'0'));
-  }
-  if (std::regex_search(date_string,std::regex("%HH"))) {
-    strutils::replace_all(date_string,"%HH",strutils::itos(hr));
-  }
-  if (std::regex_search(date_string,std::regex("%H"))) {
-    strutils::replace_all(date_string,"%H",strutils::ftos(hr,2,0,'0'));
-  }
-  if (std::regex_search(date_string,std::regex("%hh"))) {
-    strutils::replace_all(date_string,"%hh",hhmonths[mo]);
-  }
-  if (std::regex_search(date_string,std::regex("%h"))) {
-    strutils::replace_all(date_string,"%h",hmonths[mo]);
-  }
-  if (std::regex_search(date_string,std::regex("%MM"))) {
-    strutils::replace_all(date_string,"%MM",strutils::ftos(min,2,0,'0'));
-  }
-  if (std::regex_search(date_string,std::regex("%M"))) {
-    strutils::replace_all(date_string,"%M",strutils::itos(min));
-  }
-  if (std::regex_search(date_string,std::regex("%mm"))) {
-    strutils::replace_all(date_string,"%mm",strutils::itos(mo));
-  }
-  if (std::regex_search(date_string,std::regex("%m"))) {
-    strutils::replace_all(date_string,"%m",strutils::ftos(mo,2,0,'0'));
-  }
-  if (std::regex_search(date_string,std::regex("%R"))) {
-    strutils::replace_all(date_string,"%R",strutils::ftos(hr,2,0,'0')+":"+strutils::ftos(min,2,0,'0'));
-  }
-  if (std::regex_search(date_string,std::regex("%SS"))) {
-    strutils::replace_all(date_string,"%SS",strutils::ftos(sec,2,0,'0'));
-  }
-  if (std::regex_search(date_string,std::regex("%S"))) {
-    strutils::replace_all(date_string,"%S",strutils::itos(sec));
-  }
-  if (std::regex_search(date_string,std::regex("%T"))) {
-    strutils::replace_all(date_string,"%T",strutils::ftos(hr,2,0,'0')+":"+strutils::ftos(min,2,0,'0')+":"+strutils::ftos(sec,2,0,'0'));
-  }
-  if (std::regex_search(date_string,std::regex("%Y"))) {
-    strutils::replace_all(date_string,"%Y",strutils::ftos(yr,4,0,'0'));
-  }
+  strutils::replace_all(date_string,"%dd",strutils::itos(dy));
+  strutils::replace_all(date_string,"%d",strutils::ftos(dy,2,0,'0'));
+  strutils::replace_all(date_string,"%HH",strutils::itos(hr));
+  strutils::replace_all(date_string,"%H",strutils::ftos(hr,2,0,'0'));
+  strutils::replace_all(date_string,"%hh",hhmonths[mo]);
+  strutils::replace_all(date_string,"%h",hmonths[mo]);
+  strutils::replace_all(date_string,"%MM",strutils::ftos(min,2,0,'0'));
+  strutils::replace_all(date_string,"%M",strutils::itos(min));
+  strutils::replace_all(date_string,"%mm",strutils::itos(mo));
+  strutils::replace_all(date_string,"%m",strutils::ftos(mo,2,0,'0'));
+  strutils::replace_all(date_string,"%R",strutils::ftos(hr,2,0,'0')+":"+strutils::ftos(min,2,0,'0'));
+  strutils::replace_all(date_string,"%SS",strutils::ftos(sec,2,0,'0'));
+  strutils::replace_all(date_string,"%S",strutils::itos(sec));
+  strutils::replace_all(date_string,"%T",strutils::ftos(hr,2,0,'0')+":"+strutils::ftos(min,2,0,'0')+":"+strutils::ftos(sec,2,0,'0'));
+  strutils::replace_all(date_string,"%Y",strutils::ftos(yr,4,0,'0'));
   if (std::regex_search(date_string,std::regex("%ZZ"))) {
     if (utc_off > -2400 && utc_off < 2400) {
 	tz=strutils::ftos(abs(utc_off),4,0,'0');
@@ -701,9 +677,7 @@ std::string DateTime::toString(const char *format) const
 	strutils::replace_all(date_string,"%Z","LT");
     }
   }
-  if (std::regex_search(date_string,std::regex("%a")) && wkdy >= 0) {
-    strutils::replace_all(date_string,"%a",wkdys[wkdy]);
-  }
+  strutils::replace_all(date_string,"%a",wkdys[wkdy]);
   return date_string;
 }
 
@@ -824,9 +798,17 @@ DateTime getCurrentDateTime()
   return dt;
 }
 
-bool isLeapYear(size_t year)
+bool isLeapYear(size_t year,std::string calendar)
 {
-  if ( (year % 4) == 0 && ( (year % 100 != 0) || (year % 400) == 0)) {
+  if (calendar.empty() || calendar == "standard" || calendar == "gregorian" || calendar == "proleptic_gregorian") {
+    if ( (year % 4) == 0 && ( (year % 100 != 0) || (year % 400) == 0)) {
+	return true;
+    }
+    else {
+	return false;
+    }
+  }
+  else if (calendar == "366_day" || calendar == "all_leap") {
     return true;
   }
   else {
@@ -836,14 +818,18 @@ bool isLeapYear(size_t year)
 
 size_t getDaysInMonth(size_t year,size_t month,std::string calendar)
 {
-  size_t ndays;
-
-  if (month < 1 || month > 12)
+  if (month < 1 || month > 12) {
     return 0;
-  ndays=DateTime::days_in_month[month];
-  if (calendar.length() == 0 || calendar != "noleap") {
-    if (month == 2 && isLeapYear(year))
-	ndays++;
   }
-  return ndays;
+  if (calendar == "360_day") {
+    return 30;
+  }
+  else {
+    if (month != 2 || isLeapYear(year,calendar)) {
+	return DateTime::days_in_month_leap[month];
+    }
+    else {
+	return DateTime::days_in_month_noleap[month];
+    }
+  }
 }
