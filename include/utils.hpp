@@ -37,7 +37,6 @@ extern void julianDay(int jul_day,size_t& year,size_t& month,size_t& day,size_t 
 extern void marsdenToLatLon(std::string msquare_spec,double& lat,double& lon);
 extern void putLocalFile(std::string server_name,std::string remote_directory,std::string local_filename,std::string dssRoot);
 extern void sendmail(std::string to_list,std::string from,std::string bcc_list,std::string subject,std::string body);
-extern void strput(char *string,int numeric,int num_chars,char fill = ' ',bool is_signed = false);
 extern void untar(std::string dirname,std::string filename);
 
 #if defined(_AIX)
@@ -95,7 +94,6 @@ extern double ibmconv(const unsigned char *buf,size_t off);
 extern char *ascebc(char *dest,char *src);
 extern char *ascndpc(char *dest,char *src,size_t num);
 extern char *ascnebc(char *dest,char *src,size_t num);
-extern char *btoa(bool b);
 extern char *dpcnasc(char *dest,char *src,size_t num);
 extern char *ebcasc(char *dest,char *src);
 extern char *ebcdnasc(char *dest,char *src,size_t num);
@@ -120,7 +118,6 @@ extern std::string getRemoteWebFile_old(std::string URL,std::string local_tmpdir
 extern std::string getRemoteWebFile(std::string URL,std::string local_tmpdir);
 extern std::string getUnixArgsString(int argc,char **argv,char separator = ':');
 extern std::string retryCommand(std::string command,int num_retries);
-extern std::string strand(size_t length);
 extern std::string transformSuperscripts(std::string s);
 
 extern bool existsOnRDAWebServer(std::string server_name,std::string remote_filename,struct stat& buf);
